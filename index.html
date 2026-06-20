@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>誰是臥底</title>
+  <style>
+    :root {
+      --bg: #0f0f1a;
+      --card: #1a1a2e;
+      --accent: #e94560;
+      --blue: #0f3460;
+      --text: #eaeaea;
+      --muted: #888;
+      --green: #4caf50;
+      --orange: #ff9800;
+      --border: rgba(255,255,255,0.08);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Microsoft JhengHei', '微軟正黑體', 'PingFang TC', sans-serif;
+      min-height: 100vh;
+    }
+    .screen {
+      display: none;
+      min-height: 100vh;
+      padding: 24px 20px 40px;
+      flex-direction: column;
+      align-items: center;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+    .screen.active { display: flex; }
+    .logo    { font-size: 3rem; margin-bottom: 4px; text-align: center; }
+    h1       { font-size: 2rem; color: var(--accent); text-align: center; margin-bottom: 6px; }
+    h2       { font-size: 1.4rem; text-align: center; margin-bottom: 16px; }
+    h3       { font-size: 0.82rem; margin-bottom: 10px; color: var(--muted);
+               text-transform: uppercase; letter-spacing: 1px; }
+    .subtitle { color: var(--muted); text-align: center; margin-bottom: 28px; font-size: 0.95rem; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      width: 100%;
+      margin-bottom: 12px;
+    }
+    input {
+      width: 100%;
+      padding: 13px 16px;
+      border: 1.5px solid var(--blue);
+      border-radius: 10px;
+      background: rgba(255,255,255,0.04);
+      color: var(--text);
+      font-size: 1rem;
+      margin-bottom: 10px;
+      outline: none;
+      font-family: inherit;
+      transition: border-color .2s;
+    }
+    input:focus { border-color: var(--accent); }
+    button {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all .15s;
+      margin-bottom: 8px;
+      font-family: inherit;
+    }
+    .btn-red   { background: var(--accent); color: #fff; }
+    .btn-blue  { background: var(--blue); color: #fff; }
+    .btn-ghost { background: transparent; color: var(--muted); border: 1.5px solid var(--border); }
+    .btn-green { background: var(--green); color: #fff; }
+    button:hover:not(:disabled) { filter: brightness(1.15); transform: translateY(-1px); }
+    button:disabled { opacity: .4; cursor: default; transform: none; }
+
+    /* ── 題庫選擇格狀 ── */
+    .cat-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      width: 100%;
+      margin-bottom: 16px;
+    }
+    .cat-btn {
+      padding: 16px 10px;
+      background: var(--card);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      cursor: pointer;
+      text-align: center;
+      transition: all .15s;
+      width: auto; margin: 0;
+      font-family: inherit;
+      font-size: 0.9rem;
+    }
+    .cat-btn:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .cat-btn.sel {
+      border-color: var(--accent);
+      background: rgba(233,69,96,.15);
+      box-shadow: 0 0 0 1px var(--accent);
+    }
+    .cat-btn .cat-icon { font-size: 1.8rem; display: block; margin-bottom: 4px; }
+    .cat-btn .cat-name { font-weight: 700; }
+    .cat-btn .cat-count { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
+    /* 最後一個置中（奇數時）*/
+    .cat-btn:last-child:nth-child(odd) { grid-column: 1 / -1; max-width: 200px; margin: 0 auto; }
+
+    /* ── 狀態列 ── */
+    .statusbar {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 0.82rem; color: var(--muted);
+      margin-bottom: 16px; width: 100%;
+    }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: blink 2s infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    /* ── 玩家列表 ── */
+    .player-list { list-style: none; width: 100%; }
+    .player-list li {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 0; border-bottom: 1px solid var(--border);
+    }
+    .player-list li:last-child { border-bottom: none; }
+    .avatar {
+      width: 34px; height: 34px; border-radius: 50%; background: var(--blue);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 0.85rem; flex-shrink: 0;
+    }
+    .pname { flex: 1; }
+    .badge { font-size: 0.7rem; padding: 2px 7px; border-radius: 4px; font-weight: 600; }
+    .badge-host { background: var(--accent); color: #fff; }
+    .badge-you  { background: var(--blue); color: #fff; }
+    .badge-dead { background: #2a2a2a; color: #555; }
+    .badge-spy  { background: rgba(233,69,96,.2); color: var(--accent); }
+    .badge-civ  { background: rgba(76,175,80,.2); color: var(--green); }
+
+    /* ── 詞語卡 ── */
+    .word-card {
+      width: 100%; min-height: 180px;
+      background: var(--card); border: 2px solid var(--blue);
+      border-radius: 16px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      cursor: pointer; transition: border-color .25s;
+      margin-bottom: 12px; user-select: none;
+    }
+    .word-card.revealed { border-color: var(--accent); }
+    .word-hint { color: var(--muted); font-size: 1rem; }
+    .word-big  { font-size: 2.6rem; font-weight: 700; color: var(--accent); }
+    .word-role { margin-top: 8px; font-size: 0.9rem; color: var(--muted); }
+
+    /* ── 回合提示 ── */
+    .turn-box {
+      width: 100%; padding: 14px 18px;
+      background: var(--card); border: 1.5px solid var(--border);
+      border-radius: 12px; margin-bottom: 12px; text-align: center;
+    }
+    .turn-box.my-turn { border-color: var(--accent); background: rgba(233,69,96,.08); }
+
+    /* ── 描述列表 ── */
+    .desc-list { max-height: 260px; overflow-y: auto; }
+    .desc-item {
+      display: flex; gap: 10px; padding: 8px 0;
+      border-bottom: 1px solid var(--border); align-items: flex-start;
+    }
+    .desc-item:last-child { border-bottom: none; }
+    .desc-who  { font-weight: 700; color: var(--accent); font-size: 0.85rem; min-width: 56px; }
+    .desc-text { color: var(--text); font-size: 0.95rem; }
+
+    /* ── 投票 ── */
+    .vote-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+    .vote-btn {
+      padding: 12px 8px; background: var(--card);
+      border: 1.5px solid var(--border); border-radius: 10px;
+      color: var(--text); cursor: pointer; transition: all .15s;
+      font-size: 0.95rem; text-align: center;
+      width: auto; margin: 0; font-family: inherit;
+    }
+    .vote-btn:hover { border-color: var(--accent); }
+    .vote-btn.sel   { border-color: var(--accent); background: rgba(233,69,96,.15); }
+    .vote-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .chip { font-size: 0.75rem; padding: 3px 10px; border-radius: 20px; background: rgba(255,255,255,.07); color: var(--muted); }
+
+    /* ── 結果 ── */
+    .big-icon { font-size: 5rem; text-align: center; margin-bottom: 12px; }
+    .word-pair-row { display: flex; gap: 12px; justify-content: center; margin: 12px 0; }
+    .wp-box   { padding: 12px 18px; border-radius: 12px; text-align: center; }
+    .wp-civ   { background: rgba(76,175,80,.15); border: 1.5px solid var(--green); }
+    .wp-spy   { background: rgba(233,69,96,.15); border: 1.5px solid var(--accent); }
+    .wp-label { font-size: 0.72rem; color: var(--muted); margin-bottom: 4px; }
+    .wp-word  { font-size: 1.4rem; font-weight: 700; }
+
+    /* ── 題庫標籤 ── */
+    .cat-tag {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 0.8rem; padding: 4px 10px; border-radius: 20px;
+      background: rgba(233,69,96,.15); color: var(--accent);
+      border: 1px solid rgba(233,69,96,.3); margin-bottom: 8px;
+    }
+
+    .err  { color: var(--accent); text-align: center; padding: 6px; font-size: 0.88rem; min-height: 22px; }
+    .info { color: var(--muted); text-align: center; font-size: 0.85rem; padding: 4px; }
+  </style>
+</head>
+<body>
+
+<!-- ══ 首頁 ══════════════════════════════════════════════════ -->
+<div class="screen active" id="s-home">
+  <div style="flex:1"></div>
+  <div class="logo">🕵️</div>
+  <h1>誰是臥底</h1>
+  <p class="subtitle">找出潛伏在平民中的臥底！</p>
+  <div class="card">
+    <input id="inp-name" type="text" placeholder="輸入你的名字" maxlength="10"
+      onkeydown="if(event.key==='Enter')goCreate()">
+    <button class="btn-red"  onclick="goCreate()">🏠 創建房間</button>
+    <button class="btn-blue" onclick="goJoin()">🚪 加入房間</button>
+  </div>
+  <p class="err" id="err-home"></p>
+  <div style="flex:2"></div>
+</div>
+
+<!-- ══ 選擇題庫 ════════════════════════════════════════════════ -->
+<div class="screen" id="s-category">
+  <h2>選擇題庫</h2>
+  <p class="subtitle">選一個題庫後再設定房間名稱</p>
+  <div class="cat-grid" id="cat-grid"></div>
+  <div class="card" id="cat-room-form" style="display:none">
+    <div class="cat-tag" id="cat-selected-label"></div>
+    <input id="inp-create-room" type="text" placeholder="房間名稱" maxlength="20"
+      onkeydown="if(event.key==='Enter')doCreate()">
+    <button class="btn-red" onclick="doCreate()">確認創建</button>
+  </div>
+  <p class="err" id="err-create"></p>
+  <button class="btn-ghost" onclick="show('home')" style="width:100%;max-width:500px">返回</button>
+</div>
+
+<!-- ══ 加入房間 ════════════════════════════════════════════════ -->
+<div class="screen" id="s-join">
+  <div style="flex:1"></div>
+  <h2>加入房間</h2>
+  <div class="card">
+    <input id="inp-join-room" type="text" placeholder="輸入房間名稱" maxlength="20"
+      onkeydown="if(event.key==='Enter')doJoin()">
+    <button class="btn-red" onclick="doJoin()">確認加入</button>
+    <button class="btn-ghost" onclick="show('home')">返回</button>
+  </div>
+  <p class="err" id="err-join"></p>
+  <div style="flex:2"></div>
+</div>
+
+<!-- ══ 大廳 ══════════════════════════════════════════════════ -->
+<div class="screen" id="s-lobby">
+  <div class="statusbar"><div class="dot"></div><span id="lb-room">房間</span></div>
+  <h2>等待玩家加入</h2>
+  <p class="subtitle" id="lb-share">邀請朋友輸入房間名稱加入！</p>
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <h3 style="margin:0">玩家 <span id="lb-count"></span></h3>
+      <span class="cat-tag" id="lb-cat-tag"></span>
+    </div>
+    <ul class="player-list" id="lb-players"></ul>
+  </div>
+  <button class="btn-red" id="btn-start" onclick="doStart()" style="display:none">開始遊戲 🎮</button>
+  <p class="info" id="lb-wait">等待房主開始...</p>
+  <p class="err" id="err-lobby"></p>
+</div>
+
+<!-- ══ 查看詞語 ════════════════════════════════════════════════ -->
+<div class="screen" id="s-word">
+  <div style="flex:1"></div>
+  <h2 id="word-title">查看你的秘密詞語</h2>
+  <p class="subtitle">⚠️ 不要讓其他人看到你的螢幕！</p>
+  <div class="word-card" id="word-card" onclick="revealWord()">
+    <div class="word-hint" id="w-hint">👆 點我查看詞語</div>
+    <div class="word-big"  id="w-text" style="display:none"></div>
+    <div class="word-role" id="w-role" style="display:none"></div>
+  </div>
+  <button class="btn-green" id="btn-ready" onclick="markReady()" disabled>我記好了，準備開始 ✓</button>
+  <div style="flex:2"></div>
+</div>
+
+<!-- ══ 描述回合 ════════════════════════════════════════════════ -->
+<div class="screen" id="s-game">
+  <div class="statusbar"><div class="dot"></div><span id="g-round">第 1 輪</span></div>
+  <div class="turn-box" id="g-turn"><span id="g-turn-text">等待中...</span></div>
+  <div class="card">
+    <h3>描述紀錄</h3>
+    <div class="desc-list" id="g-descs"><p class="info">等待第一位玩家描述...</p></div>
+  </div>
+  <div id="g-input-area" style="display:none">
+    <div class="card">
+      <p class="info" style="margin-bottom:8px">輪到你了！用一個詞或短句描述你的詞語（不能說出詞語本身）</p>
+      <input id="g-desc-inp" type="text" placeholder="輸入你的描述..." maxlength="30"
+        onkeydown="if(event.key==='Enter')submitDesc()">
+      <button class="btn-red" onclick="submitDesc()">提交描述 →</button>
+    </div>
+  </div>
+  <p class="err" id="err-game"></p>
+</div>
+
+<!-- ══ 投票 ══════════════════════════════════════════════════ -->
+<div class="screen" id="s-vote">
+  <div class="statusbar"><div class="dot"></div><span id="v-round">第 1 輪投票</span></div>
+  <h2>投票淘汰</h2>
+  <p class="subtitle">你認為誰是臥底？</p>
+  <div class="card">
+    <h3>本輪描述</h3>
+    <div class="desc-list" id="v-descs"></div>
+  </div>
+  <div class="card" id="v-form">
+    <h3>選擇你要淘汰的人</h3>
+    <div class="vote-grid" id="v-options"></div>
+    <button class="btn-red" id="btn-vote" onclick="submitVote()" disabled>確認投票</button>
+    <p class="err" id="err-vote"></p>
+  </div>
+  <div class="card" id="v-wait" style="display:none">
+    <p class="info">你已投票，等待其他玩家...</p>
+    <div class="vote-chips" id="v-chips"></div>
+  </div>
+</div>
+
+<!-- ══ 回合結果 ════════════════════════════════════════════════ -->
+<div class="screen" id="s-result">
+  <div style="flex:1"></div>
+  <div class="big-icon" id="r-icon"></div>
+  <h1 id="r-title"></h1>
+  <p class="subtitle" id="r-sub"></p>
+  <div class="card" id="r-body"></div>
+  <button class="btn-red"  id="btn-next" onclick="doNextRound()" style="display:none">下一輪 →</button>
+  <p class="info"          id="r-wait"   style="display:none">等待房主繼續...</p>
+  <div style="flex:2"></div>
+</div>
+
+<!-- ══ 遊戲結束 ════════════════════════════════════════════════ -->
+<div class="screen" id="s-end">
+  <div class="big-icon" id="e-icon"></div>
+  <h1 id="e-title"></h1>
+  <p class="subtitle" id="e-sub"></p>
+  <div class="card">
+    <h3>詞語揭曉</h3>
+    <div class="word-pair-row" id="e-pair"></div>
+  </div>
+  <div class="card">
+    <h3>玩家身份</h3>
+    <ul class="player-list" id="e-players"></ul>
+  </div>
+  <button class="btn-blue" onclick="backHome()" style="margin-top:8px">🔄 回到首頁</button>
+</div>
+
+<script>
+// ══ 設定 ══════════════════════════════════════════════════════
+const API_URL = 'https://script.google.com/macros/s/AKfycbz5nZzFgcA9L_9hTKL1ur5v1W1QHhavItBfWQDKvDMAyJLAODXg073tF6lg6bjRHsau/exec'; // 
+
+// ── 七大題庫定義（前端用來顯示選項）─────────────────────────
+const CATEGORIES = [
+  { key: '食物飲品', icon: '🍎', count: 10 },
+  { key: '動物',     icon: '🐾', count: 10 },
+  { key: '運動休閒', icon: '⚽', count: 10 },
+  { key: '交通工具', icon: '🚗', count: 10 },
+  { key: '地點場所', icon: '🏖️', count: 10 },
+  { key: '職業身份', icon: '👨‍⚕️', count: 10 },
+  { key: '日常生活', icon: '🏠', count: 10 },
+];
+
+// ══ 狀態 ══════════════════════════════════════════════════════
+let G = {
+  name: '', room: '', isHost: false,
+  selectedCategory: null,
+  myWord: null, wordRevealed: false, readyDone: false,
+  hasDescribed: false, hasVoted: false, myVote: null,
+  shownResultRound: -1, currentRound: 0,
+  poll: null,
+};
+
+// ══ 初始化題庫選擇格 ══════════════════════════════════════════
+function buildCatGrid() {
+  const grid = document.getElementById('cat-grid');
+  grid.innerHTML = CATEGORIES.map(c => `
+    <div class="cat-btn" onclick="selectCat('${c.key}', this)">
+      <span class="cat-icon">${c.icon}</span>
+      <div class="cat-name">${c.key}</div>
+      <div class="cat-count">${c.count} 組題目</div>
+    </div>
+  `).join('');
+}
+buildCatGrid();
+
+function selectCat(key, el) {
+  G.selectedCategory = key;
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('sel'));
+  el.classList.add('sel');
+
+  const cat = CATEGORIES.find(c => c.key === key);
+  document.getElementById('cat-selected-label').innerHTML = `${cat.icon} ${cat.key}`;
+  document.getElementById('cat-room-form').style.display = 'block';
+  document.getElementById('inp-create-room').focus();
+  err('err-create', '');
+}
+
+// ══ 工具 ══════════════════════════════════════════════════════
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('s-' + id).classList.add('active');
+}
+function err(id, msg) { document.getElementById(id).textContent = msg || ''; }
+
+async function api(params) {
+  const url = API_URL + '?' + new URLSearchParams(params);
+  const r = await fetch(url);
+  if (!r.ok) throw new Error('網路錯誤');
+  return r.json();
+}
+
+function startPoll() { stopPoll(); G.poll = setInterval(poll, 2200); }
+function stopPoll()  { clearInterval(G.poll); G.poll = null; }
+
+// ══ 首頁 ══════════════════════════════════════════════════════
+function goCreate() {
+  const n = document.getElementById('inp-name').value.trim();
+  if (!n) { err('err-home','請輸入你的名字'); return; }
+  G.name = n;
+  G.selectedCategory = null;
+  err('err-home','');
+  // 重置題庫選擇
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('sel'));
+  document.getElementById('cat-room-form').style.display = 'none';
+  document.getElementById('inp-create-room').value = '';
+  show('category');
+}
+function goJoin() {
+  const n = document.getElementById('inp-name').value.trim();
+  if (!n) { err('err-home','請輸入你的名字'); return; }
+  G.name = n;
+  err('err-home','');
+  show('join');
+}
+
+// ══ 創建房間 ══════════════════════════════════════════════════
+async function doCreate() {
+  if (!G.selectedCategory) { err('err-create','請先選擇題庫'); return; }
+  const room = document.getElementById('inp-create-room').value.trim();
+  if (!room) { err('err-create','請輸入房間名稱'); return; }
+  err('err-create','');
+  try {
+    const r = await api({action:'createRoom', room, player:G.name, category:G.selectedCategory});
+    if (!r.success) { err('err-create', r.error); return; }
+    G.room = room; G.isHost = true;
+    enterLobby(r.players, r.host, r.category);
+  } catch(e) { err('err-create','連線失敗，請確認 API 設定'); }
+}
+
+// ══ 加入房間 ══════════════════════════════════════════════════
+async function doJoin() {
+  const room = document.getElementById('inp-join-room').value.trim();
+  if (!room) { err('err-join','請輸入房間名稱'); return; }
+  err('err-join','');
+  try {
+    const r = await api({action:'joinRoom', room, player:G.name});
+    if (!r.success) { err('err-join', r.error); return; }
+    G.room = room; G.isHost = (r.host === G.name);
+    enterLobby(r.players, r.host, r.category);
+  } catch(e) { err('err-join','連線失敗，請確認 API 設定'); }
+}
+
+// ══ 大廳 ══════════════════════════════════════════════════════
+function catInfo(key) { return CATEGORIES.find(c => c.key === key) || {icon:'🎮', key}; }
+
+function enterLobby(players, host, category) {
+  show('lobby');
+  document.getElementById('lb-room').textContent = '房間：' + G.room;
+  const ci = catInfo(category);
+  document.getElementById('lb-cat-tag').innerHTML = `${ci.icon} ${ci.key}`;
+  renderLobbyPlayers(players, host);
+  if (G.isHost) {
+    document.getElementById('btn-start').style.display = 'block';
+    document.getElementById('lb-wait').style.display = 'none';
+  }
+  startPoll();
+}
+
+function renderLobbyPlayers(players, host) {
+  document.getElementById('lb-count').textContent = `(${players.length}/10)`;
+  document.getElementById('lb-players').innerHTML = players.map(p => `
+    <li>
+      <div class="avatar">${p[0]}</div>
+      <span class="pname">${p}</span>
+      ${p === host  ? '<span class="badge badge-host">房主</span>' : ''}
+      ${p === G.name ? '<span class="badge badge-you">你</span>'  : ''}
+    </li>
+  `).join('');
+  const btn = document.getElementById('btn-start');
+  if (btn) btn.disabled = players.length < 3;
+}
+
+async function doStart() {
+  err('err-lobby','');
+  try {
+    const r = await api({action:'startGame', room:G.room, player:G.name});
+    if (!r.success) err('err-lobby', r.error);
+  } catch(e) { err('err-lobby','開始失敗'); }
+}
+
+// ══ 輪詢 ══════════════════════════════════════════════════════
+async function poll() {
+  try {
+    const r = await api({action:'getRoom', room:G.room});
+    if (r.success) handleUpdate(r);
+  } catch(e) {}
+}
+
+function curScr() { return document.querySelector('.screen.active')?.id || ''; }
+
+function handleUpdate(d) {
+  const scr = curScr();
+
+  if (d.status === 'waiting') {
+    if (scr === 's-lobby') renderLobbyPlayers(d.players, d.host);
+    return;
+  }
+  if (scr === 's-lobby') { stopPoll(); enterWordReveal(d); return; }
+  if (scr === 's-word')  { if (G.readyDone) transitionByStatus(d); return; }
+
+  if (d.status === 'describing') {
+    if (scr === 's-game')   { updateGame(d); return; }
+    if (scr === 's-result') {
+      if (d.round > G.currentRound) {
+        G.currentRound = d.round;
+        G.hasDescribed = false; G.hasVoted = false; G.myVote = null;
+        show('game'); updateGame(d);
+      }
+      return;
+    }
+    if (scr !== 's-word') { show('game'); updateGame(d); }
+    return;
+  }
+  if (d.status === 'voting') {
+    if (scr === 's-vote')                    { updateVote(d); return; }
+    if (scr === 's-game' || scr === 's-result') { show('vote'); updateVote(d); return; }
+    return;
+  }
+  if (d.status === 'result') {
+    if (d.round !== G.shownResultRound) { G.shownResultRound = d.round; showResult(d); }
+    return;
+  }
+  if (d.status === 'ended') { showEnd(d); stopPoll(); }
+}
+
+function transitionByStatus(d) {
+  if (d.status === 'describing')   { show('game');   updateGame(d); startPoll(); }
+  else if (d.status === 'voting')  { show('vote');   updateVote(d); startPoll(); }
+  else if (d.status === 'result')  { showResult(d);  startPoll(); }
+  else if (d.status === 'ended')   { showEnd(d); }
+}
+
+// ══ 查看詞語 ══════════════════════════════════════════════════
+function enterWordReveal(d) {
+  G.myWord = null; G.wordRevealed = false; G.readyDone = false;
+  G.hasDescribed = false; G.hasVoted = false; G.myVote = null;
+  G.currentRound = d.round; G.shownResultRound = -1;
+
+  document.getElementById('word-title').textContent = G.name + ' 的秘密詞語';
+  document.getElementById('w-hint').style.display = 'block';
+  document.getElementById('w-text').style.display = 'none';
+  document.getElementById('w-role').style.display = 'none';
+  document.getElementById('word-card').classList.remove('revealed');
+  document.getElementById('btn-ready').disabled = true;
+  document.getElementById('btn-ready').textContent = '我記好了，準備開始 ✓';
+  show('word');
+}
+
+async function revealWord() {
+  if (G.wordRevealed) return;
+  try {
+    const r = await api({action:'getMyWord', room:G.room, player:G.name});
+    if (!r.success) { alert(r.error); return; }
+    G.myWord = r.word; G.isUndercover = r.isUndercover; G.wordRevealed = true;
+    document.getElementById('w-hint').style.display = 'none';
+    document.getElementById('w-text').textContent = r.word;
+    document.getElementById('w-text').style.display = 'block';
+    document.getElementById('w-role').textContent = r.isUndercover ? '⚠️ 你是臥底！' : '✅ 你是平民';
+    document.getElementById('w-role').style.display = 'block';
+    document.getElementById('word-card').classList.add('revealed');
+    document.getElementById('btn-ready').disabled = false;
+  } catch(e) { alert('獲取詞語失敗，請重試'); }
+}
+
+function markReady() {
+  G.readyDone = true;
+  document.getElementById('btn-ready').textContent = '等待其他玩家...';
+  document.getElementById('btn-ready').disabled = true;
+  startPoll();
+}
+
+// ══ 描述回合 ══════════════════════════════════════════════════
+function updateGame(d) {
+  G.currentRound = d.round;
+  document.getElementById('g-round').textContent = `第 ${d.round} 輪 · 描述`;
+
+  const descs = (d.descriptions || []).filter(x => x.round === d.round);
+  const dl = document.getElementById('g-descs');
+  dl.innerHTML = descs.length
+    ? descs.map(x => `<div class="desc-item"><span class="desc-who">${x.player}</span><span class="desc-text">${x.desc}</span></div>`).join('')
+    : '<p class="info">等待第一位玩家描述...</p>';
+
+  const myAlive  = d.alive && d.alive[G.name];
+  const isMyTurn = d.currentDescriber === G.name && !G.hasDescribed;
+  const box = document.getElementById('g-turn');
+  const txt = document.getElementById('g-turn-text');
+  const inp = document.getElementById('g-input-area');
+
+  if (!myAlive) {
+    box.className = 'turn-box';
+    txt.textContent = '你已被淘汰，繼續旁觀';
+    inp.style.display = 'none';
+  } else if (isMyTurn) {
+    box.className = 'turn-box my-turn';
+    txt.innerHTML = '🎤 <strong>輪到你描述了！</strong>';
+    inp.style.display = 'block';
+    document.getElementById('g-desc-inp').focus();
+  } else {
+    box.className = 'turn-box';
+    txt.textContent = d.currentDescriber ? `等待 ${d.currentDescriber} 描述...` : '所有人描述完畢';
+    inp.style.display = 'none';
+  }
+}
+
+async function submitDesc() {
+  const desc = document.getElementById('g-desc-inp').value.trim();
+  if (!desc) return;
+  err('err-game','');
+  try {
+    const r = await api({action:'submitDesc', room:G.room, player:G.name, desc});
+    if (!r.success) { err('err-game', r.error); return; }
+    G.hasDescribed = true;
+    document.getElementById('g-desc-inp').value = '';
+    document.getElementById('g-input-area').style.display = 'none';
+    document.getElementById('g-turn-text').textContent = '等待其他玩家...';
+  } catch(e) { err('err-game','提交失敗，請重試'); }
+}
+
+// ══ 投票 ══════════════════════════════════════════════════════
+function updateVote(d) {
+  G.currentRound = d.round;
+  document.getElementById('v-round').textContent = `第 ${d.round} 輪 · 投票`;
+
+  const descs = (d.descriptions || []).filter(x => x.round === d.round);
+  document.getElementById('v-descs').innerHTML = descs.map(x =>
+    `<div class="desc-item"><span class="desc-who">${x.player}</span><span class="desc-text">${x.desc}</span></div>`
+  ).join('');
+
+  const myAlive = d.alive && d.alive[G.name];
+  const vForm = document.getElementById('v-form');
+  const vWait = document.getElementById('v-wait');
+
+  if (!myAlive || G.hasVoted) {
+    vForm.style.display = 'none';
+    vWait.style.display = 'block';
+    const counts = {};
+    for (const t of Object.values(d.votes || {})) counts[t] = (counts[t]||0)+1;
+    document.getElementById('v-chips').innerHTML =
+      Object.entries(counts).map(([p,c]) => `<span class="chip">${p} ${c}票</span>`).join('');
+  } else {
+    vForm.style.display = 'block';
+    vWait.style.display = 'none';
+    const alive = Object.keys(d.alive||{}).filter(p => d.alive[p] && p !== G.name);
+    document.getElementById('v-options').innerHTML = alive.map(p =>
+      `<div class="vote-btn${G.myVote===p?' sel':''}" onclick="pickVote('${p}',this)">${p}</div>`
+    ).join('');
+    document.getElementById('btn-vote').disabled = !G.myVote;
+  }
+}
+
+function pickVote(player, el) {
+  G.myVote = player;
+  document.querySelectorAll('.vote-btn').forEach(b => b.classList.remove('sel'));
+  el.classList.add('sel');
+  document.getElementById('btn-vote').disabled = false;
+}
+
+async function submitVote() {
+  if (!G.myVote) return;
+  err('err-vote','');
+  try {
+    const r = await api({action:'submitVote', room:G.room, player:G.name, target:G.myVote});
+    if (!r.success) { err('err-vote', r.error); return; }
+    G.hasVoted = true;
+    document.getElementById('v-form').style.display = 'none';
+    document.getElementById('v-wait').style.display = 'block';
+    if (r.status === 'ended') {
+      const full = await api({action:'getRoom', room:G.room});
+      showEnd(full); stopPoll();
+    }
+  } catch(e) { err('err-vote','投票失敗，請重試'); }
+}
+
+// ══ 回合結果 ══════════════════════════════════════════════════
+function showResult(d) {
+  const lr = d.lastResult;
+  if (!lr) return;
+
+  if (lr.type === 'tie') {
+    document.getElementById('r-icon').textContent  = '🤝';
+    document.getElementById('r-title').textContent = '平票！';
+    document.getElementById('r-sub').textContent   = '沒有人被淘汰，進入下一輪';
+    document.getElementById('r-body').innerHTML    = '<p class="info">票數相同，重新開始新一輪描述</p>';
+  } else {
+    const spy = lr.isUndercover;
+    document.getElementById('r-icon').textContent  = spy ? '🎉' : '😢';
+    document.getElementById('r-title').textContent = `${lr.player} 出局了！`;
+    document.getElementById('r-sub').textContent   = spy ? '沒錯，他/她是臥底！' : '哎呀，淘汰了平民...';
+    document.getElementById('r-body').innerHTML    = `
+      <div style="text-align:center;font-size:1.5rem;font-weight:700;color:${spy?'var(--green)':'var(--accent)'}">
+        ${spy ? '✅ 抓到臥底！平民加油！' : '❌ 平民出局，臥底還在！'}
+      </div>`;
+  }
+
+  document.getElementById('btn-next').style.display = G.isHost ? 'block' : 'none';
+  document.getElementById('r-wait').style.display   = G.isHost ? 'none'  : 'block';
+  show('result');
+  startPoll();
+}
+
+async function doNextRound() {
+  try {
+    const r = await api({action:'nextRound', room:G.room, player:G.name});
+    if (!r.success) alert(r.error);
+  } catch(e) { alert('操作失敗'); }
+}
+
+// ══ 遊戲結束 ══════════════════════════════════════════════════
+function showEnd(d) {
+  stopPoll();
+  const won = d.winner === 'civilians';
+  document.getElementById('e-icon').textContent  = won ? '🎉' : '🕵️';
+  document.getElementById('e-title').textContent = won ? '平民獲勝！' : '臥底獲勝！';
+  document.getElementById('e-sub').textContent   = won ? '所有臥底都被找出來了！' : '臥底成功潛伏到最後！';
+
+  const pair = d.revealWordPair;
+  document.getElementById('e-pair').innerHTML = pair ? `
+    <div class="wp-box wp-civ"><div class="wp-label">平民詞語</div><div class="wp-word">${pair[0]}</div></div>
+    <div class="wp-box wp-spy"><div class="wp-label">臥底詞語</div><div class="wp-word">${pair[1]}</div></div>
+  ` : '';
+
+  const isSpy = d.revealIsUndercover || {};
+  const alive  = d.alive || {};
+  document.getElementById('e-players').innerHTML = (d.players || []).map(p => {
+    const spy = isSpy[p]; const dead = !alive[p];
+    return `<li>
+      <div class="avatar" style="background:${spy?'var(--accent)':'var(--blue)'}">${p[0]}</div>
+      <span class="pname">${p}${p===G.name?' (你)':''}</span>
+      <span class="badge ${dead?'badge-dead':''} ${spy?'badge-spy':'badge-civ'}">
+        ${spy?'🕵️ 臥底':'👤 平民'}${dead?' · 已出局':''}
+      </span>
+    </li>`;
+  }).join('');
+
+  show('end');
+}
+
+// ══ 回首頁 ════════════════════════════════════════════════════
+function backHome() {
+  stopPoll();
+  const savedName = G.name;
+  G = {
+    name: savedName, room: '', isHost: false, selectedCategory: null,
+    myWord: null, wordRevealed: false, readyDone: false,
+    hasDescribed: false, hasVoted: false, myVote: null,
+    shownResultRound: -1, currentRound: 0, poll: null,
+  };
+  document.getElementById('inp-name').value = savedName;
+  show('home');
+}
+</script>
+</body>
+</html>
