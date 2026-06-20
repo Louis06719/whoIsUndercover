@@ -8,7 +8,7 @@
 //   4. 複製網頁應用程式網址，貼到 index.html 的 API_URL
 // ============================================================
 
-const SPREADSHEET_ID = 'YOUR_SPREADSHEET_ID_HERE'; // ← 改這裡
+// 不需要填 ID — 腳本綁定在試算表上會自動抓取
 
 // ── 七大題庫（順序使用，用完自動從頭輪轉）────────────────────
 const CATEGORIES = {
@@ -128,7 +128,7 @@ function doGet(e) {
 }
 
 function getSheet(name) {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
   return ss.getSheetByName(name) || ss.insertSheet(name);
 }
 
